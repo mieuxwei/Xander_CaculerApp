@@ -24,6 +24,9 @@ interface RepaymentItem {
   paydayPeriod: '5' | '20'; // Split by payday
   paidThisMonth: boolean;
   lastPaidMonth: string; // YYYY-MM
+  isInstallment: boolean;
+  totalInstallments?: number;
+  remainingInstallments?: number;
 }
 
 // --- Constants ---
@@ -44,7 +47,9 @@ export default function App() {
     name: '',
     totalAmount: '',
     dueDay: '1',
-    paydayPeriod: '5' as '5' | '20'
+    paydayPeriod: '5' as '5' | '20',
+    isInstallment: false,
+    totalInstallments: '12'
   });
 
   // --- Initialization ---
@@ -177,14 +182,23 @@ export default function App() {
   // --- CRUD Logic ---
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Auto-determine payday period based on due day
+    const autoPaydayPeriod = parseInt(formData.dueDay) <= 15 ? '5' : '20';
+
     const newItem: RepaymentItem = {
       id: editingItem?.id || (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11)),
       name: formData.name,
       totalAmount: parseFloat(formData.totalAmount),
       dueDay: parseInt(formData.dueDay),
-      paydayPeriod: formData.paydayPeriod,
+      paydayPeriod: autoPaydayPeriod,
       paidThisMonth: editingItem?.paidThisMonth || false,
-      lastPaidMonth: editingItem?.lastPaidMonth || ''
+      lastPaidMonth: editingItem?.lastPaidMonth || '',
+      isInstallment: formData.isInstallment,
+      totalInstallments: formData.isInstallment ? parseInt(formData.totalInstallments) : undefined,
+      remainingInstallments: editingItem 
+        ? editingItem.remainingInstallments 
+        : (formData.isInstallment ? parseInt(formData.totalInstallments) : undefined)
     };
     if (editingItem) {
       setRepayments(prev => prev.map(item => item.id === editingItem.id ? newItem : item));
@@ -193,7 +207,14 @@ export default function App() {
     }
     setShowAddModal(false);
     setEditingItem(null);
-    setFormData({ name: '', totalAmount: '', dueDay: '1', paydayPeriod: '5' });
+    setFormData({ 
+      name: '', 
+      totalAmount: '', 
+      dueDay: '1', 
+      paydayPeriod: '5',
+      isInstallment: false,
+      totalInstallments: '12'
+    });
   };
 
   const togglePaid = (id: string) => {
@@ -201,7 +222,23 @@ export default function App() {
     setRepayments(prev => prev.map(item => {
       if (item.id === id) {
         const isPaid = !item.paidThisMonth;
-        return { ...item, paidThisMonth: isPaid, lastPaidMonth: isPaid ? currentMonth : '' };
+        let newRemaining = item.remainingInstallments;
+        
+        // If marking as paid and it's an installment, decrement remaining
+        if (isPaid && item.isInstallment && typeof item.remainingInstallments === 'number') {
+          newRemaining = Math.max(0, item.remainingInstallments - 1);
+        } 
+        // If unmarking as paid, increment back (optional logic, but safer for user error)
+        else if (!isPaid && item.isInstallment && typeof item.remainingInstallments === 'number') {
+          newRemaining = Math.min(item.totalInstallments || 999, item.remainingInstallments + 1);
+        }
+
+        return { 
+          ...item, 
+          paidThisMonth: isPaid, 
+          lastPaidMonth: isPaid ? currentMonth : '',
+          remainingInstallments: newRemaining
+        };
       }
       return item;
     }));
@@ -217,7 +254,9 @@ export default function App() {
       name: item.name, 
       totalAmount: item.totalAmount.toString(), 
       dueDay: item.dueDay.toString(),
-      paydayPeriod: item.paydayPeriod
+      paydayPeriod: item.paydayPeriod,
+      isInstallment: item.isInstallment || false,
+      totalInstallments: (item.totalInstallments || 12).toString()
     });
     setShowAddModal(true);
   };
@@ -318,13 +357,15 @@ export default function App() {
             </div>
 
             <div className="space-y-3">
-              {repayments.filter(item => item.paydayPeriod === period).length === 0 ? (
+              {repayments
+                .filter(item => item.paydayPeriod === period && (!item.isInstallment || (item.remainingInstallments ?? 0) > 0))
+                .length === 0 ? (
                 <div className="py-8 text-center border border-dashed border-app-border rounded-2xl">
                   <p className="text-app-muted text-xs italic">尚無此期間項目</p>
                 </div>
               ) : (
                 repayments
-                  .filter(item => item.paydayPeriod === period)
+                  .filter(item => item.paydayPeriod === period && (!item.isInstallment || (item.remainingInstallments ?? 0) > 0))
                   .sort((a, b) => a.dueDay - b.dueDay)
                   .map(item => {
                     const daysLeft = getDaysRemaining(item.dueDay);
@@ -337,7 +378,14 @@ export default function App() {
                             </button>
                             <div>
                               <h4 className={`font-bold ${item.paidThisMonth ? 'text-app-muted line-through' : 'text-app-text'}`}>{item.name}</h4>
-                              <p className={`text-lg font-mono font-bold ${period === '5' ? 'text-emerald-500' : 'text-blue-500'}`}>${item.totalAmount.toLocaleString()}</p>
+                              <div className="flex items-center gap-2">
+                                <p className={`text-lg font-mono font-bold ${period === '5' ? 'text-emerald-500' : 'text-blue-500'}`}>${item.totalAmount.toLocaleString()}</p>
+                                {item.isInstallment && (
+                                  <span className="text-[10px] bg-app-bg px-1.5 py-0.5 rounded border border-app-border text-app-muted font-bold">
+                                    剩餘 {item.remainingInstallments}/{item.totalInstallments} 期
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                           <div className="text-right">
@@ -395,6 +443,46 @@ export default function App() {
                       </button>
                     ))}
                   </div>
+                </div>
+
+                <div className="space-y-4 p-4 bg-app-card rounded-2xl border border-app-border">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-bold">分期付款</p>
+                      <p className="text-[10px] text-app-muted">開啟後可設定總期數</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, isInstallment: !formData.isInstallment })}
+                      className={`w-12 h-6 rounded-full transition-colors relative ${formData.isInstallment ? 'bg-emerald-500' : 'bg-app-bg border border-app-border'}`}
+                    >
+                      <motion.div
+                        animate={{ x: formData.isInstallment ? 24 : 2 }}
+                        className="absolute top-1 left-0 w-4 h-4 bg-white rounded-full shadow-sm"
+                      />
+                    </button>
+                  </div>
+                  
+                  <AnimatePresence>
+                    {formData.isInstallment && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="pt-2 space-y-2">
+                          <label className="text-[10px] text-app-muted font-bold uppercase">總期數</label>
+                          <input
+                            type="number"
+                            value={formData.totalInstallments}
+                            onChange={e => setFormData({ ...formData, totalInstallments: e.target.value })}
+                            className="w-full h-12 bg-app-bg border border-app-border rounded-xl px-4 focus:ring-2 focus:ring-emerald-500 text-app-text"
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
