@@ -47,9 +47,9 @@ export default function App() {
     name: '',
     totalAmount: '',
     dueDay: '1',
-    paydayPeriod: '5' as '5' | '20',
     isInstallment: false,
-    totalInstallments: '12'
+    totalInstallments: '12',
+    paidInstallments: '0'
   });
 
   // --- Initialization ---
@@ -184,21 +184,26 @@ export default function App() {
     e.preventDefault();
     
     // Auto-determine payday period based on due day
-    const autoPaydayPeriod = parseInt(formData.dueDay) <= 15 ? '5' : '20';
+    // 5th to 19th -> 5th Salary
+    // 20th to 4th -> 20th Salary
+    const day = parseInt(formData.dueDay);
+    const autoPaydayPeriod = (day >= 5 && day <= 19) ? '5' : '20';
+
+    const totalInst = parseInt(formData.totalInstallments);
+    const paidInst = parseInt(formData.paidInstallments);
+    const remainingInst = Math.max(0, totalInst - paidInst);
 
     const newItem: RepaymentItem = {
       id: editingItem?.id || (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11)),
       name: formData.name,
       totalAmount: parseFloat(formData.totalAmount),
-      dueDay: parseInt(formData.dueDay),
+      dueDay: day,
       paydayPeriod: autoPaydayPeriod,
       paidThisMonth: editingItem?.paidThisMonth || false,
       lastPaidMonth: editingItem?.lastPaidMonth || '',
       isInstallment: formData.isInstallment,
-      totalInstallments: formData.isInstallment ? parseInt(formData.totalInstallments) : undefined,
-      remainingInstallments: editingItem 
-        ? editingItem.remainingInstallments 
-        : (formData.isInstallment ? parseInt(formData.totalInstallments) : undefined)
+      totalInstallments: formData.isInstallment ? totalInst : undefined,
+      remainingInstallments: formData.isInstallment ? remainingInst : undefined
     };
     if (editingItem) {
       setRepayments(prev => prev.map(item => item.id === editingItem.id ? newItem : item));
@@ -211,9 +216,9 @@ export default function App() {
       name: '', 
       totalAmount: '', 
       dueDay: '1', 
-      paydayPeriod: '5',
       isInstallment: false,
-      totalInstallments: '12'
+      totalInstallments: '12',
+      paidInstallments: '0'
     });
   };
 
@@ -250,13 +255,14 @@ export default function App() {
 
   const editItem = (item: RepaymentItem) => {
     setEditingItem(item);
+    const paid = item.isInstallment ? (item.totalInstallments || 0) - (item.remainingInstallments || 0) : 0;
     setFormData({ 
       name: item.name, 
       totalAmount: item.totalAmount.toString(), 
       dueDay: item.dueDay.toString(),
-      paydayPeriod: item.paydayPeriod,
       isInstallment: item.isInstallment || false,
-      totalInstallments: (item.totalInstallments || 12).toString()
+      totalInstallments: (item.totalInstallments || 12).toString(),
+      paidInstallments: paid.toString()
     });
     setShowAddModal(true);
   };
@@ -276,7 +282,9 @@ export default function App() {
 
   const currentPeriod = useMemo(() => {
     const day = new Date().getDate();
-    return day <= 15 ? '5' : '20';
+    // 5th to 19th -> 5th Salary
+    // 20th to 4th -> 20th Salary
+    return (day >= 5 && day <= 19) ? '5' : '20';
   }, []);
 
   const getDaysRemaining = (dueDay: number) => {
@@ -428,22 +436,6 @@ export default function App() {
                   <label className="text-xs text-app-muted font-bold uppercase tracking-wider">項目名稱</label>
                   <input required type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="例如：房租、信用卡" className="w-full h-14 bg-app-card border-none rounded-2xl px-4 focus:ring-2 focus:ring-emerald-500 text-lg text-app-text" />
                 </div>
-                
-                <div className="space-y-2">
-                  <label className="text-xs text-app-muted font-bold uppercase tracking-wider">歸屬發薪期</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {[5, 20].map(p => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, paydayPeriod: p.toString() as '5' | '20' })}
-                        className={`h-14 rounded-2xl font-bold transition-all border-2 ${formData.paydayPeriod === p.toString() ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600' : 'border-app-border bg-app-card text-app-muted'}`}
-                      >
-                        {p}號期
-                      </button>
-                    ))}
-                  </div>
-                </div>
 
                 <div className="space-y-4 p-4 bg-app-card rounded-2xl border border-app-border">
                   <div className="flex items-center justify-between">
@@ -471,14 +463,25 @@ export default function App() {
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden"
                       >
-                        <div className="pt-2 space-y-2">
-                          <label className="text-[10px] text-app-muted font-bold uppercase">總期數</label>
-                          <input
-                            type="number"
-                            value={formData.totalInstallments}
-                            onChange={e => setFormData({ ...formData, totalInstallments: e.target.value })}
-                            className="w-full h-12 bg-app-bg border border-app-border rounded-xl px-4 focus:ring-2 focus:ring-emerald-500 text-app-text"
-                          />
+                        <div className="pt-2 grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <label className="text-[10px] text-app-muted font-bold uppercase">總期數</label>
+                            <input
+                              type="number"
+                              value={formData.totalInstallments}
+                              onChange={e => setFormData({ ...formData, totalInstallments: e.target.value })}
+                              className="w-full h-12 bg-app-bg border border-app-border rounded-xl px-4 focus:ring-2 focus:ring-emerald-500 text-app-text"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-[10px] text-app-muted font-bold uppercase">已繳期數</label>
+                            <input
+                              type="number"
+                              value={formData.paidInstallments}
+                              onChange={e => setFormData({ ...formData, paidInstallments: e.target.value })}
+                              className="w-full h-12 bg-app-bg border border-app-border rounded-xl px-4 focus:ring-2 focus:ring-emerald-500 text-app-text"
+                            />
+                          </div>
                         </div>
                       </motion.div>
                     )}
