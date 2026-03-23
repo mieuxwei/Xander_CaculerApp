@@ -1,0 +1,5 @@
+{
+  "name": "記帳管家 PWA",
+  "description": "個人記帳管理工具，專注隱私與自動提醒",
+  "requestFramePermissions": []
+}

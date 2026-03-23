@@ -1,0 +1,50 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  
+  /* Theme Colors */
+  --color-app-bg: var(--app-bg);
+  --color-app-card: var(--app-card);
+  --color-app-text: var(--app-text);
+  --color-app-muted: var(--app-muted);
+  --color-app-border: var(--app-border);
+}
+
+:root {
+  --app-bg: #ffffff;
+  --app-card: #f4f4f5;
+  --app-text: #09090b;
+  --app-muted: #71717a;
+  --app-border: #e4e4e7;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --app-bg: #09090b;
+    --app-card: #18181b;
+    --app-text: #f4f4f5;
+    --app-muted: #a1a1aa;
+    --app-border: #27272a;
+  }
+}
+
+body {
+  background-color: var(--app-bg);
+  color: var(--app-text);
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Hide scrollbar */
+::-webkit-scrollbar {
+  display: none;
+}
+
+* {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

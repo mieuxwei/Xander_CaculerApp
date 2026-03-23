@@ -1,0 +1,21 @@
+{
+  "name": "記帳管家",
+  "short_name": "記帳管家",
+  "description": "個人記帳管理工具，專注隱私與自動提醒",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#09090b",
+  "icons": [
+    {
+      "src": "https://picsum.photos/seed/money/192/192",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://picsum.photos/seed/money/512/512",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
