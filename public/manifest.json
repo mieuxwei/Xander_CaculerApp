@@ -2,7 +2,7 @@
   "name": "記帳管家",
   "short_name": "記帳管家",
   "description": "個人記帳管理工具，專注隱私與自動提醒",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#09090b",
   "theme_color": "#09090b",

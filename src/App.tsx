@@ -90,7 +90,7 @@ export default function App() {
     }
 
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/service-worker.js');
+      navigator.serviceWorker.register('./service-worker.js');
     }
   }, []);
 
@@ -178,7 +178,7 @@ export default function App() {
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
     const newItem: RepaymentItem = {
-      id: editingItem?.id || crypto.randomUUID(),
+      id: editingItem?.id || (typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Math.random().toString(36).substring(2, 11)),
       name: formData.name,
       totalAmount: parseFloat(formData.totalAmount),
       dueDay: parseInt(formData.dueDay),
